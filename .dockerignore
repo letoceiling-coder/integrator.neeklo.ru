@@ -1,0 +1,10 @@
+node_modules
+.git
+.turbo
+dist
+apps/web/dist
+apps/api/dist
+*.log
+.env
+.env.local
+deploy

@@ -1,0 +1,44 @@
+# Isolated stack for integrator.neeklo.ru — does NOT bind host 5432/6379.
+# API exposed only on 127.0.0.1:3022 for nginx reverse proxy.
+
+name: neeklo-integrator
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: neeklo-integrator-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-neeklo_integrator}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-neeklo_integrator}
+    ports:
+      - '127.0.0.1:5438:5432'
+    volumes:
+      - neeklo_integrator_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-neeklo_integrator} -d ${POSTGRES_DB:-neeklo_integrator}']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    container_name: neeklo-integrator-redis
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '127.0.0.1:6385:6379'
+    volumes:
+      - neeklo_integrator_redis:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+volumes:
+  neeklo_integrator_pg:
+  neeklo_integrator_redis:
+
+# API runs on host via PM2 (tsx) — see deploy/deploy.sh

@@ -1,0 +1,31 @@
+{
+  "name": "neeklo-marketplace-os",
+  "version": "0.1.0",
+  "private": true,
+  "description": "NEEKLO Marketplace OS — event-sourced, AI-native operating system for selling on marketplaces.",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "build:packages": "pnpm build --filter=@neeklo/contracts --filter=@neeklo/kernel --filter=@neeklo/marketplace-sdk --filter=@neeklo/plugin-runtime",
+    "db:generate": "pnpm --filter @neeklo/api db:generate",
+    "db:migrate": "pnpm --filter @neeklo/api db:migrate",
+    "db:seed": "pnpm --filter @neeklo/api db:seed",
+    "infra:up": "docker compose -f docker/docker-compose.yml up -d",
+    "infra:down": "docker compose -f docker/docker-compose.yml down"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "prettier": "^3.4.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  }
+}
