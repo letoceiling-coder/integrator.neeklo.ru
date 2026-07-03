@@ -12,6 +12,7 @@ import { OAuthCenterService } from './oauth-center.service';
 import { TokenManagerService } from './token-manager.service';
 import { OAuthHealthService } from './oauth-health.service';
 import { OAuthApiConsoleService } from './oauth-api-console.service';
+import { OAuthValidationService } from './oauth-validation.service';
 import { OAuthProvisioningService } from './oauth-provisioning.service';
 import { OAuthConnectionReportService } from './oauth-connection-report.service';
 
@@ -27,6 +28,7 @@ import { OAuthConnectionReportService } from './oauth-connection-report.service'
     TokenManagerService,
     OAuthHealthService,
     OAuthApiConsoleService,
+    OAuthValidationService,
     OAuthProvisioningService,
     OAuthConnectionReportService,
     OAuthCenterService,
@@ -39,6 +41,7 @@ import { OAuthConnectionReportService } from './oauth-connection-report.service'
     TokenManagerService,
     OAuthHealthService,
     OAuthApiConsoleService,
+    OAuthValidationService,
     OAuthProvisioningService,
     OAuthConnectionReportService,
     OAuthCenterService,
