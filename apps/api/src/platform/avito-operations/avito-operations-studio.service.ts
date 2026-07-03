@@ -9,7 +9,7 @@ import {
   type AvitoQualityReportDto,
 } from '@neeklo/contracts';
 import type { AppendContext } from '@neeklo/kernel';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { AdsService } from '../../modules/ads/application/ads.service';
 import { ListingStudioService } from '../commerce/commerce-services';
 import { AiGatewayService } from '../ai-platform/gateway/ai-gateway.service';

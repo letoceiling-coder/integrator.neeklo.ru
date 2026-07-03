@@ -4,7 +4,7 @@ import type {
   AvitoOperationsTimelineEntryDto,
 } from '@neeklo/contracts';
 import { MarketplaceCode } from '@neeklo/contracts';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { AvitoOperationsAdsService } from './avito-operations-ads.service';
 import { AvitoOperationsFeedService } from './avito-operations-feed.service';
 import { AvitoOperationsPromotionService } from './avito-operations-promotion.service';

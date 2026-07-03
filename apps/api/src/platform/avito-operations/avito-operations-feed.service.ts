@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
 import type { AvitoFeedExportDto, AvitoFeedStudioDto } from '@neeklo/contracts';
 import { MarketplaceCode } from '@neeklo/contracts';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { ObjectStorageService } from '../avito/storage/object-storage.service';
 import { AvitoOperationsTimelineService } from './avito-operations-timeline.service';
 

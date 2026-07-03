@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { MarketplaceCode, type AvitoPromotionCenterDto } from '@neeklo/contracts';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class AvitoOperationsPromotionService {

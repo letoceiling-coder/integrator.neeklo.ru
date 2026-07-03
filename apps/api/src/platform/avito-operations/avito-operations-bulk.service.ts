@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import type { AvitoBulkOperationDto } from '@neeklo/contracts';
 import type { AppendContext } from '@neeklo/kernel';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { AvitoClient } from '../adapters/avito/avito.client';
 import { AvitoAdsManagerService } from '../avito/ads/avito-ads-manager.service';
 import { AdsService } from '../../modules/ads/application/ads.service';

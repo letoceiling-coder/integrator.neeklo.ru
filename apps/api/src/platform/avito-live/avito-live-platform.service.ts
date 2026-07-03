@@ -16,10 +16,10 @@ import {
   type AvitoWebhookCenterDto,
 } from '@neeklo/contracts';
 import type { Env } from '../../config/env.schema';
-import { PrismaService } from '../../prisma/prisma.service';
-import { AvitoLiveSyncEngineService } from '../sync/avito-live-sync-engine.service';
-import { AvitoLiveRequestLogService } from '../logging/avito-live-request-log.service';
-import { AvitoEventPublisher } from '../../avito/events/avito-event.publisher';
+import { PrismaService } from '../prisma/prisma.service';
+import { AvitoLiveSyncEngineService } from './sync/avito-live-sync-engine.service';
+import { AvitoLiveRequestLogService } from './logging/avito-live-request-log.service';
+import { AvitoEventPublisher } from '../avito/events/avito-event.publisher';
 
 @Injectable()
 export class AvitoLivePlatformService {
