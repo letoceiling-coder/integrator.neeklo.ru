@@ -1,49 +1,41 @@
-# Sync Engine
+# Avito Live Sync Engine
 
-`SyncEngine` (`apps/api/src/platform/marketplace-core/sync/sync.engine.ts`) orchestrates bidirectional synchronization with marketplace providers.
+`AvitoLiveSyncEngineService` runs official Avito API workers and persists results to read models.
 
-## Operations
+## Queue
 
-| Operation | Meaning |
-| --- | --- |
-| `create` | New entity on marketplace |
-| `update` | Changed entity |
-| `delete` | Removed remotely |
-| `restore` | Previously deleted, now back |
-| `skip` | No action needed |
-| `conflict` | Local vs remote mismatch |
+In-memory FIFO queue per API instance:
 
-## Modes
+- `{ tenantId, accountId }` — full sync (all enabled workers in order)
+- `{ tenantId, accountId, worker }` — single worker
 
-```mermaid
-flowchart TD
-  REQ[Sync Request] --> MODE{mode}
-  MODE -->|incremental| PULL[pull since checkpoint]
-  MODE -->|full| PULL2[pull all]
-  MODE -->|reconcile| REC[provider.reconcile]
-  PULL --> CLASS[classify changes]
-  PULL2 --> CLASS
-  CLASS --> PUSH[provider.push actionable]
-  REC --> DONE[SyncResult]
-  PUSH --> DONE
-```
+`processQueue(maxJobs)` drains up to `maxJobs` entries sequentially.
 
-## Flow
+## Full sync order
 
-1. Create `SyncJobReadModel` (status: running)
-2. Resolve provider `sync` capability
-3. `pull()` or `reconcile()`
-4. Classify conflicts vs actionable changes
-5. `push()` actionable changes
-6. Update job + emit account domain events
+1. Profile → Items → Categories → Tariff → Messenger → Stats → Promotion → Autoload → Hierarchy → Phones → Employees → Ratings → Reviews → Stock → Call Tracking → Api Catalog
 
-## Domain integration
+Delivery and Jobs workers are disabled (`unavailable`) — no official REST endpoints in current OpenAPI bundle.
 
-`MarketplaceSyncService` calls `SyncEngine`, then updates `AccountAggregate`:
+## Worker execution
 
-- `AccountSyncStarted`
-- `AccountSyncCompleted` / `AccountSyncFailed`
+Each worker:
 
-## Provider requirement
+1. Sets status `running`
+2. Calls Avito via `AvitoClient` (tokens from Credential Vault)
+3. Logs request to `AvitoLiveRequestLogReadModel`
+4. Upserts snapshot / ads read models
+5. Updates worker row (lastSyncAt, nextSyncAt, counts, version)
+6. Publishes `SyncWorkerCompleted` + domain event (`ProfileUpdated`, etc.)
 
-Plugins implement `MarketplaceSync` when sync is supported. Avito: not yet (Autoload feed module).
+## Retry
+
+Failed workers increment `retryCount`. Scheduler re-enqueues when `nextSyncAt <= now`.
+
+## API catalog worker
+
+Reads `docs/avito-openapi/*.json` and stores available operations in snapshot domain `api_catalog`.
+
+## Orchestrator integration
+
+`AvitoSyncOrchestratorService.syncAccount()` delegates to the live engine (replaces legacy analytics-only pull).

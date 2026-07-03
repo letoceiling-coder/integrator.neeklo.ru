@@ -29,6 +29,7 @@ import {
 } from '../../platform/commerce/commerce-services';
 import { RegionalIntelligenceEngine } from '../../platform/intelligence/regional/regional-intelligence.engine';
 import { RequestContextService } from '../../platform/context/request-context';
+import { AvitoMessengerOutboundService } from '../../platform/avito-production/avito-messenger-outbound.service';
 
 @Controller('commerce')
 export class CommerceController {
@@ -51,6 +52,7 @@ export class CommerceController {
     private readonly automations: AutomationStudioService,
     private readonly regional: RegionalIntelligenceEngine,
     private readonly ctx: RequestContextService,
+    private readonly messengerOutbound: AvitoMessengerOutboundService,
   ) {}
 
   // ── Unified Inbox ─────────────────────────────────────────────
@@ -78,11 +80,14 @@ export class CommerceController {
 
   @Post('inbox/:id/send')
   @RequirePermissions(Permission.ChatWrite)
-  sendMessage(
+  async sendMessage(
+    @CurrentUser() user: CurrentUserDto,
     @Param('id') id: string,
     @Body(new ZodValidationPipe(sendMessageSchema)) body: { text: string; attachments?: string[] },
   ) {
-    return this.conversations.sendMessage(id, body);
+    await this.conversations.sendMessage(id, { text: body.text, attachments: body.attachments ?? [] });
+    const outbound = await this.messengerOutbound.sendOutbound(user.tenantId, id, body.text);
+    return { ok: true, avito: outbound };
   }
 
   @Post('inbox/:id/pin')

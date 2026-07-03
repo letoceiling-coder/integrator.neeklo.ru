@@ -13,12 +13,13 @@ import { MediaPipelineService } from './media/media-pipeline.service';
 import { NotificationChannelService } from './notifications/notification-channel.service';
 import { AutomationRuntimeService } from './automation/automation-runtime.service';
 import { AvitoBudgetService } from './budget/avito-budget.service';
+import { AvitoLiveModule } from '../avito-live/avito-live.module';
 import { AvitoSyncOrchestratorService } from './sync/avito-sync-orchestrator.service';
 import { AdsModule } from '../../modules/ads/ads.module';
 
 @Global()
 @Module({
-  imports: [forwardRef(() => CommerceModule), forwardRef(() => AiPlatformModule), AdsModule],
+  imports: [forwardRef(() => CommerceModule), forwardRef(() => AiPlatformModule), AdsModule, forwardRef(() => AvitoLiveModule)],
   providers: [
     AvitoEventPublisher,
     ObjectStorageService,

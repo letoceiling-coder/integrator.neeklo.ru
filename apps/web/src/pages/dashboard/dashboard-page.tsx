@@ -16,6 +16,7 @@ import type { AdReadModel } from '@neeklo/contracts';
 import { useAds } from '@/entities/ad/api';
 import { useInbox, useTasks, useBudget } from '@/entities/commerce/api';
 import { useAvitoAnalytics } from '@/entities/avito/api';
+import { useOAuthIntegrationDashboard } from '@/entities/oauth/api';
 import { useRegions } from '@/entities/commerce/api';
 import { useAiRun } from '@/entities/ai/api';
 import { useCopilotPage } from '@/widgets/copilot/copilot-context';
@@ -45,6 +46,7 @@ export function DashboardPage() {
   const { data: tasks } = useTasks();
   const { data: budget } = useBudget();
   const { data: analytics } = useAvitoAnalytics();
+  const { data: integration } = useOAuthIntegrationDashboard();
   const { data: regions } = useRegions();
   const briefing = useAiRun();
   const [briefingText, setBriefingText] = useState<string | null>(null);
@@ -109,6 +111,51 @@ export function DashboardPage() {
           {briefingText ?? (briefing.isPending ? <Skeleton className="h-24" /> : 'Загрузка сводки…')}
         </div>
       </Card>
+
+      {integration?.connected ? (
+        <Card className="p-5 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-medium">Avito Integration</h3>
+            <Badge tone={integration.overallStatus === 'pass' ? 'success' : integration.overallStatus === 'warn' ? 'warning' : 'danger'}>
+              {integration.overallStatus}
+            </Badge>
+          </div>
+          <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+            <Stat label="Объявления" value={String(integration.adsCount)} />
+            <Stat label="Сообщения" value={String(integration.messagesCount)} />
+            <Stat label="OAuth" value={integration.oauthStatus} />
+            <Stat label="API Health" value={integration.apiHealth} />
+          </dl>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <Badge tone={integration.webhookStatus === 'pass' ? 'success' : 'warning'}>Webhook: {integration.webhookStatus}</Badge>
+            <Badge tone={integration.feedStatus === 'pass' ? 'success' : 'warning'}>Feed: {integration.feedStatus}</Badge>
+            {integration.lastSyncAt ? (
+              <span className="text-[var(--color-fg-subtle)]">
+                Sync: {new Date(integration.lastSyncAt).toLocaleString('ru-RU')}
+              </span>
+            ) : null}
+          </div>
+          <Link
+            to="/settings/connection-report"
+            search={{ accountId: integration.accountId ?? undefined }}
+            className="text-xs text-[var(--color-primary)] hover:underline"
+          >
+            Connection Report →
+          </Link>
+        </Card>
+      ) : (
+        <Card className="p-5 flex items-center justify-between gap-4">
+          <div>
+            <h3 className="text-sm font-medium">Avito не подключён</h3>
+            <p className="text-xs text-[var(--color-fg-subtle)] mt-1">
+              Введите Client ID и Secret в OAuth Settings — секреты хранятся только в Vault.
+            </p>
+          </div>
+          <Link to="/settings/oauth">
+            <Button size="sm">Подключить</Button>
+          </Link>
+        </Card>
+      )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-6">
         <Kpi icon={TrendingUp} label="Активные" value={formatNumber(totals.active)} loading={adsLoading} />

@@ -42,6 +42,7 @@ import {
   ListingPipelineStep,
   listingPipelineStepSchema,
 } from './avito-catalog';
+import { OAuthEventType, oauthEventCatalog } from './oauth-catalog';
 
 export {
   AccountEventType,
@@ -64,6 +65,7 @@ export {
 } from './commerce-catalog';
 export { AiEventType, AiTaskType, aiTaskTypeSchema, MemoryTier, AgentRole } from './ai-catalog';
 export { AvitoEventType, ListingPipelineStep, listingPipelineStepSchema } from './avito-catalog';
+export { OAuthEventType, OAuthCredentialStatus } from './oauth-catalog';
 
 /**
  * The single source of truth for every domain event NEEKLO can emit.
@@ -111,6 +113,8 @@ export const EventType = {
   ...AiEventType,
   // ── Avito Enterprise (Release 0.6) ────────────────────────────
   ...AvitoEventType,
+  // ── OAuth Platform (Phase A2) ─────────────────────────────────
+  ...OAuthEventType,
 } as const;
 export type EventType = (typeof EventType)[keyof typeof EventType];
 
@@ -231,6 +235,7 @@ export const eventCatalog = {
   ...commerceEventCatalog,
   ...aiEventCatalog,
   ...avitoEventCatalog,
+  ...oauthEventCatalog,
 } as const satisfies Record<EventType, z.ZodTypeAny>;
 export type EventPayloadMap = {
   [K in EventType]: z.infer<(typeof eventCatalog)[K]>;

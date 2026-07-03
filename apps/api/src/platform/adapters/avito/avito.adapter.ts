@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { MarketplaceCode, type PromotionKind } from '@neeklo/contracts';
+import { MarketplaceCode, OAuthCredentialStatus, type PromotionKind } from '@neeklo/contracts';
 import { DomainError } from '@neeklo/kernel';
 import type {
   AdStatsPoint,
@@ -12,6 +12,7 @@ import type {
   PublishAdInput,
   PublishAdResult,
 } from '../marketplace-adapter.port';
+import { CredentialVaultService } from '../../oauth-center/vault/credential-vault.service';
 import { AvitoClient } from './avito.client';
 
 /**
@@ -33,10 +34,28 @@ export class AvitoAdapter implements MarketplaceAdapter {
     promotions: false,
   };
 
-  constructor(private readonly client: AvitoClient) {}
+  constructor(
+    private readonly client: AvitoClient,
+    private readonly vault: CredentialVaultService,
+  ) {}
 
-  private async selfId(): Promise<number> {
-    const self = await this.client.request<{ id: number }>('GET', '/core/v1/accounts/self');
+  private async resolveAccountId(tenantId: string): Promise<string> {
+    const credentials = await this.vault.listByTenant(tenantId, MarketplaceCode.AVITO);
+    const connected = credentials.find((c) => c.status === OAuthCredentialStatus.CONNECTED);
+    if (!connected) {
+      throw new DomainError('avito_not_configured', 'No connected Avito OAuth account for tenant');
+    }
+    return connected.accountId;
+  }
+
+  private async selfId(tenantId: string): Promise<number> {
+    const accountId = await this.resolveAccountId(tenantId);
+    const self = await this.client.request<{ id: number }>(
+      tenantId,
+      accountId,
+      'GET',
+      '/core/v1/accounts/self',
+    );
     return self.id;
   }
 
@@ -57,14 +76,15 @@ export class AvitoAdapter implements MarketplaceAdapter {
   }
 
   async fetchStats(
-    _tenantId: string,
+    tenantId: string,
     externalId: string,
     range: AdStatsRange,
   ): Promise<AdStatsPoint[]> {
-    const userId = await this.selfId();
+    const accountId = await this.resolveAccountId(tenantId);
+    const userId = await this.selfId(tenantId);
     const res = await this.client.request<{
       result: { items: { itemId: number; stats: { date: string; uniqViews: number; uniqContacts: number; uniqFavorites: number }[] }[] };
-    }>('POST', `/stats/v1/accounts/${userId}/items`, {
+    }>(tenantId, accountId, 'POST', `/stats/v1/accounts/${userId}/items`, {
       body: {
         dateFrom: range.from.slice(0, 10),
         dateTo: range.to.slice(0, 10),
@@ -95,11 +115,16 @@ export class AvitoAdapter implements MarketplaceAdapter {
     );
   }
 
-  async sendMessage(_tenantId: string, message: OutboundMessage): Promise<void> {
-    const userId = await this.selfId();
-    await this.client.request('POST', `/messenger/v1/accounts/${userId}/chats/${message.conversationId}/messages`, {
-      body: { message: { text: message.text }, type: 'text' },
-    });
+  async sendMessage(tenantId: string, message: OutboundMessage): Promise<void> {
+    const accountId = await this.resolveAccountId(tenantId);
+    const userId = await this.selfId(tenantId);
+    await this.client.request(
+      tenantId,
+      accountId,
+      'POST',
+      `/messenger/v1/accounts/${userId}/chats/${message.conversationId}/messages`,
+      { body: { message: { text: message.text }, type: 'text' } },
+    );
   }
 
   parseWebhook(body: unknown, _headers: Record<string, string>): NormalizedInbound[] {

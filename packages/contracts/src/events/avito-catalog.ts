@@ -20,6 +20,16 @@ export const AvitoEventType = {
   AutomationExecuted: 'avito.automation_executed',
   BudgetImported: 'avito.budget_imported',
   WebhookReceived: 'avito.webhook_received',
+  ProfileUpdated: 'avito.profile_updated',
+  ItemsUpdated: 'avito.items_updated',
+  ChatsUpdated: 'avito.chats_updated',
+  StatsUpdated: 'avito.stats_updated',
+  RatingsUpdated: 'avito.ratings_updated',
+  TariffUpdated: 'avito.tariff_updated',
+  PromotionUpdated: 'avito.promotion_updated',
+  AutoloadUpdated: 'avito.autoload_updated',
+  WebhookUpdated: 'avito.webhook_updated',
+  SyncWorkerCompleted: 'avito.sync_worker_completed',
 } as const;
 export type AvitoEventType = (typeof AvitoEventType)[keyof typeof AvitoEventType];
 
@@ -150,5 +160,65 @@ export const avitoEventCatalog = {
     marketplace: marketplaceCodeSchema,
     eventType: z.string(),
     receivedAt: z.string().datetime(),
+  }),
+  [AvitoEventType.ProfileUpdated]: z.object({
+    accountId: z.string().uuid(),
+    externalAccountId: z.string(),
+    displayName: z.string(),
+    updatedAt: z.string().datetime(),
+  }),
+  [AvitoEventType.ItemsUpdated]: z.object({
+    accountId: z.string().uuid(),
+    received: z.number().int().nonnegative(),
+    updated: z.number().int().nonnegative(),
+    deleted: z.number().int().nonnegative(),
+    updatedAt: z.string().datetime(),
+  }),
+  [AvitoEventType.ChatsUpdated]: z.object({
+    accountId: z.string().uuid(),
+    chatCount: z.number().int().nonnegative(),
+    updatedAt: z.string().datetime(),
+  }),
+  [AvitoEventType.StatsUpdated]: z.object({
+    accountId: z.string().uuid(),
+    adIds: z.array(z.string()),
+    updatedAt: z.string().datetime(),
+  }),
+  [AvitoEventType.RatingsUpdated]: z.object({
+    accountId: z.string().uuid(),
+    rating: z.number().nullable(),
+    reviewCount: z.number().int().nonnegative(),
+    updatedAt: z.string().datetime(),
+  }),
+  [AvitoEventType.TariffUpdated]: z.object({
+    accountId: z.string().uuid(),
+    tariff: z.unknown(),
+    updatedAt: z.string().datetime(),
+  }),
+  [AvitoEventType.PromotionUpdated]: z.object({
+    accountId: z.string().uuid(),
+    servicesCount: z.number().int().nonnegative(),
+    updatedAt: z.string().datetime(),
+  }),
+  [AvitoEventType.AutoloadUpdated]: z.object({
+    accountId: z.string().uuid(),
+    uploadsCount: z.number().int().nonnegative(),
+    profileAvailable: z.boolean(),
+    updatedAt: z.string().datetime(),
+  }),
+  [AvitoEventType.WebhookUpdated]: z.object({
+    accountId: z.string().uuid(),
+    status: z.string(),
+    webhookUrl: z.string(),
+    updatedAt: z.string().datetime(),
+  }),
+  [AvitoEventType.SyncWorkerCompleted]: z.object({
+    accountId: z.string().uuid(),
+    worker: z.string(),
+    status: z.string(),
+    latencyMs: z.number().int().nonnegative(),
+    sourceCount: z.number().int().nonnegative(),
+    updatedCount: z.number().int().nonnegative(),
+    completedAt: z.string().datetime(),
   }),
 } as const satisfies Record<AvitoEventType, z.ZodTypeAny>;

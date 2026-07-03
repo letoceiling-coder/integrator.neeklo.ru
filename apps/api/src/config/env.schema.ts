@@ -4,6 +4,7 @@ import { z } from 'zod';
 export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   API_PORT: z.coerce.number().int().default(3001),
+  API_URL: z.string().url().default('http://localhost:3001'),
   WEB_URL: z.string().url().default('http://localhost:5173'),
 
   DATABASE_URL: z.string().min(1),
@@ -33,6 +34,16 @@ export const envSchema = z.object({
   AVITO_CLIENT_ID: z.string().default(''),
   AVITO_CLIENT_SECRET: z.string().default(''),
   AVITO_BASE_URL: z.string().url().default('https://api.avito.ru'),
+  AVITO_OAUTH_SCOPES: z
+    .string()
+    .default('messenger:read,messenger:write,stats:read,items:info,user:read,autoload:reports'),
+  /** Canonical OAuth callback path — must match Avito Developer Portal. */
+  OAUTH_REDIRECT_PATH: z.string().default('/api/auth/os/callback'),
+
+  /** 32-byte master key as 64-char hex — required in production for Credential Vault. */
+  OAUTH_VAULT_MASTER_KEY: z.string().min(32),
+  OAUTH_VAULT_KEY_VERSION: z.coerce.number().int().positive().default(1),
+  OAUTH_TOKEN_REFRESH_LEAD_SEC: z.coerce.number().int().positive().default(300),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -39,6 +39,23 @@ export class MediaPipelineService {
       const text = await this.generateText(prompt);
       mimeType = 'application/pdf';
       body = `%PDF-1.4 stub\n${text}`;
+    } else if (kind === MediaJobKind.WATERMARK) {
+      const label = String(input.watermark ?? input.text ?? 'NEEKLO');
+      body = this.buildSvg(prompt, 800, 600, label);
+    } else if (kind === MediaJobKind.RESIZE) {
+      const w = Number(input.width ?? 640);
+      const h = Number(input.height ?? 480);
+      body = this.buildSvg(prompt, w, h);
+    } else if (kind === MediaJobKind.BANNER || kind === MediaJobKind.INFOGRAPHIC) {
+      const text = await this.generateText(`Create ${kind} layout description for: ${prompt}`);
+      body = this.buildSvg(text.slice(0, 120), 1200, kind === MediaJobKind.BANNER ? 400 : 800, kind);
+    } else if (kind === MediaJobKind.REMOVE_BACKGROUND || kind === MediaJobKind.ENHANCE) {
+      const provider = this.config.get('AI_IMAGE_PROVIDER') || 'stub';
+      if (provider === 'stub') {
+        body = this.buildSvg(`${kind}: ${prompt}`, 800, 600, 'AI provider required for production quality');
+      } else {
+        body = await this.generateImage(prompt, provider);
+      }
     } else {
       const imageProvider = this.config.get('AI_IMAGE_PROVIDER') || 'stub';
       body = await this.generateImage(prompt, imageProvider);
@@ -89,6 +106,13 @@ export class MediaPipelineService {
       { role: 'user', content: prompt },
     ]);
     return res.text;
+  }
+
+  private buildSvg(text: string, width: number, height: number, badge?: string): Buffer {
+    const safe = text.replace(/[<>&"]/g, ' ');
+    const badgeText = badge ? `<text x="20" y="${height - 20}" fill="#888" font-size="14">${badge.replace(/[<>&"]/g, ' ')}</text>` : '';
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect fill="#1a1a2e" width="100%" height="100%"/><text x="40" y="80" fill="#eee" font-size="24">${safe.slice(0, 80)}</text>${badgeText}</svg>`;
+    return Buffer.from(svg, 'utf8');
   }
 
   private async generateImage(prompt: string, provider: string): Promise<Buffer> {

@@ -54,7 +54,13 @@ import { AvitoApiModule } from './modules/avito/avito.module';
 
 import { AiApiModule } from './modules/ai/ai.module';
 
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
+
 import { HealthModule } from './modules/health/health.module';
+
+import { OAuthModule } from './modules/oauth/oauth.module';
+
+import { OAuthCenterModule } from './platform/oauth-center/oauth-center.module';
 
 
 
@@ -86,6 +92,8 @@ import { HealthModule } from './modules/health/health.module';
 
     WorkflowModule,
 
+    OAuthCenterModule,
+
     AdaptersModule,
 
     AuthModule,
@@ -105,6 +113,10 @@ import { HealthModule } from './modules/health/health.module';
     AiApiModule,
 
     AvitoApiModule,
+
+    WebhooksModule,
+
+    OAuthModule,
 
     HealthModule,
 

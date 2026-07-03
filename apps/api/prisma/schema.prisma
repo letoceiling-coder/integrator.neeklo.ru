@@ -80,6 +80,64 @@ model User {
 }
 
 // ─────────────────────────────────────────────────────────────
+// OAuth Platform — Credential Vault (Phase A2)
+// All secrets stored AES-256-GCM encrypted; never plaintext.
+// ─────────────────────────────────────────────────────────────
+
+model OAuthCredentialVault {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  provider          String
+  accountId         String    @map("account_id") @db.Uuid
+  externalAccountId String?   @map("external_account_id")
+  displayName       String    @default("") @map("display_name")
+  grantType         String    @default("authorization_code") @map("grant_type")
+
+  clientIdEnc       String    @map("client_id_enc")
+  clientSecretEnc   String    @map("client_secret_enc")
+  accessTokenEnc    String?   @map("access_token_enc")
+  refreshTokenEnc   String?   @map("refresh_token_enc")
+
+  scopes            String[]  @default([])
+  tokenExpiresAt    DateTime? @map("token_expires_at") @db.Timestamptz(6)
+  refreshExpiresAt  DateTime? @map("refresh_expires_at") @db.Timestamptz(6)
+
+  status            String    @default("pending")
+  health            String    @default("unknown")
+  lastRefreshAt     DateTime? @map("last_refresh_at") @db.Timestamptz(6)
+  lastError         String?   @map("last_error")
+  lastSuccessAt     DateTime? @map("last_success_at") @db.Timestamptz(6)
+  keyVersion        Int       @default(1) @map("key_version")
+
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, provider, accountId])
+  @@index([tenantId, provider, status])
+  @@index([tokenExpiresAt])
+  @@map("oauth_credential_vault")
+}
+
+model OAuthPendingFlow {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  provider        String
+  state           String   @unique
+  codeVerifier    String?  @map("code_verifier")
+  accountId       String   @map("account_id") @db.Uuid
+  clientIdEnc     String   @map("client_id_enc")
+  clientSecretEnc String   @map("client_secret_enc")
+  scopes          String[] @default([])
+  redirectUri     String   @map("redirect_uri")
+  userId          String   @map("user_id") @db.Uuid
+  expiresAt       DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([expiresAt])
+  @@map("oauth_pending_flow")
+}
+
+// ─────────────────────────────────────────────────────────────
 // Read models (projections) — safe to DROP & rebuild from events
 // ─────────────────────────────────────────────────────────────
 
@@ -1144,4 +1202,426 @@ model BudgetImportReadModel {
 
   @@index([tenantId, importedAt(sort: Desc)])
   @@map("budget_import_read_model")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Avito Live Platform — Phase A3 sync read models
+// ─────────────────────────────────────────────────────────────
+
+model AvitoLiveSyncWorkerReadModel {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  accountId     String    @map("account_id") @db.Uuid
+  worker        String
+  label         String    @default("")
+  officialApi   String    @default("") @map("official_api")
+  intervalSec   Int       @default(300) @map("interval_sec")
+  enabled       Boolean   @default(true)
+  lastSyncAt    DateTime? @map("last_sync_at") @db.Timestamptz(6)
+  nextSyncAt    DateTime? @map("next_sync_at") @db.Timestamptz(6)
+  lastStatus    String    @default("pending") @map("last_status")
+  lastLatencyMs Int?      @map("last_latency_ms")
+  lastError     String?   @map("last_error")
+  limitation    String?   @map("limitation")
+  retryCount    Int       @default(0) @map("retry_count")
+  sourceCount   Int       @default(0) @map("source_count")
+  updatedCount  Int       @default(0) @map("updated_count")
+  deletedCount  Int       @default(0) @map("deleted_count")
+  version       Int       @default(0)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, accountId, worker])
+  @@index([nextSyncAt, enabled])
+  @@map("avito_live_sync_worker_read_model")
+}
+
+model AvitoLiveSnapshotReadModel {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  accountId String   @map("account_id") @db.Uuid
+  domain    String
+  payload   Json     @default("{}")
+  itemCount Int      @default(0) @map("item_count")
+  updatedAt DateTime @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, accountId, domain])
+  @@map("avito_live_snapshot_read_model")
+}
+
+model AvitoWebhookConfigReadModel {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  accountId      String    @map("account_id") @db.Uuid
+  webhookUrl     String    @map("webhook_url")
+  status         String    @default("pending")
+  subscriptionId String?   @map("subscription_id")
+  lastReceivedAt DateTime? @map("last_received_at") @db.Timestamptz(6)
+  lastError      String?   @map("last_error")
+  history        Json      @default("[]")
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, accountId])
+  @@map("avito_webhook_config_read_model")
+}
+
+model AvitoLiveRequestLogReadModel {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String   @map("tenant_id") @db.Uuid
+  accountId          String?  @map("account_id") @db.Uuid
+  requestId          String   @map("request_id")
+  correlationId      String   @map("correlation_id")
+  worker             String?
+  method             String
+  url                String
+  status             Int
+  latencyMs          Int      @map("latency_ms")
+  retryCount         Int      @default(0) @map("retry_count")
+  rateLimitRemaining Int?     @map("rate_limit_remaining")
+  responsePreview    String?  @map("response_preview")
+  headers            Json     @default("{}")
+  occurredAt         DateTime @map("occurred_at") @db.Timestamptz(6)
+
+  @@index([tenantId, occurredAt(sort: Desc)])
+  @@map("avito_live_request_log_read_model")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Avito Operations Platform — Phase A4 read models
+// ─────────────────────────────────────────────────────────────
+
+model AvitoAdEnrichmentReadModel {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  adId            String   @map("ad_id") @db.Uuid
+  imageUrl        String?  @map("image_url")
+  description     String   @default("")
+  tags            String[] @default([])
+  params          Json     @default("{}")
+  promotionStatus String   @default("unknown") @map("promotion_status")
+  feedStatus      String   @default("pending") @map("feed_status")
+  syncStatus      String   @default("pending") @map("sync_status")
+  qualityScore    Float?   @map("quality_score")
+  aiRecommendation String? @map("ai_recommendation")
+  errors          Json     @default("[]")
+  version         Int      @default(1)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, adId])
+  @@index([tenantId, feedStatus])
+  @@map("avito_ad_enrichment_read_model")
+}
+
+model AvitoFeedExportReadModel {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  accountId String   @map("account_id") @db.Uuid
+  format    String
+  adCount   Int      @default(0) @map("ad_count")
+  status    String   @default("completed")
+  version   Int      @default(1)
+  storageKey String? @map("storage_key")
+  publicUrl  String? @map("public_url")
+  payload   Json     @default("{}")
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+
+  @@index([tenantId, accountId, createdAt(sort: Desc)])
+  @@map("avito_feed_export_read_model")
+}
+
+model AvitoOperationsTimelineReadModel {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  adId          String?  @map("ad_id") @db.Uuid
+  accountId     String?  @map("account_id") @db.Uuid
+  kind          String
+  title         String
+  detail        String?
+  correlationId String?  @map("correlation_id")
+  occurredAt    DateTime @map("occurred_at") @db.Timestamptz(6)
+
+  @@index([tenantId, occurredAt(sort: Desc)])
+  @@index([tenantId, adId, occurredAt(sort: Desc)])
+  @@map("avito_operations_timeline_read_model")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Avito Sales & CRM Platform — Phase A5 read models
+// ─────────────────────────────────────────────────────────────
+
+model AvitoLeadReadModel {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId            String    @map("tenant_id") @db.Uuid
+  customerId          String    @map("customer_id") @db.Uuid
+  customerName        String    @map("customer_name")
+  phone               String?
+  accountId           String?   @map("account_id") @db.Uuid
+  adId                String?   @map("ad_id") @db.Uuid
+  adTitle             String?   @map("ad_title")
+  source              String    @default("avito")
+  cityId              String?   @map("city_id")
+  regionId            String?   @map("region_id")
+  pipelineStage       String    @default("new") @map("pipeline_stage")
+  dealStage           String    @default("lead") @map("deal_stage")
+  assigneeId          String?   @map("assignee_id") @db.Uuid
+  assigneeName        String?   @map("assignee_name")
+  aiScore             Float     @default(0) @map("ai_score")
+  purchaseProbability Float     @default(0) @map("purchase_probability")
+  forecast            String?
+  conversationId      String?   @map("conversation_id") @db.Uuid
+  dealId              String?   @map("deal_id") @db.Uuid
+  lastActivityAt      DateTime? @map("last_activity_at") @db.Timestamptz(6)
+  lastReplyAt         DateTime? @map("last_reply_at") @db.Timestamptz(6)
+  createdAt           DateTime  @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([tenantId, pipelineStage])
+  @@index([tenantId, customerId])
+  @@index([tenantId, lastActivityAt(sort: Desc)])
+  @@map("avito_lead_read_model")
+}
+
+model AvitoSalesAgentConfigReadModel {
+  id                 String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String  @map("tenant_id") @db.Uuid
+  accountId          String  @map("account_id") @db.Uuid
+  enabled            Boolean @default(true)
+  workingHoursStart  Int     @default(9) @map("working_hours_start")
+  workingHoursEnd    Int     @default(21) @map("working_hours_end")
+  tone               String  @default("professional")
+  maxDiscountPct     Float   @default(10) @map("max_discount_pct")
+  maxPriceRub        Int?    @map("max_price_rub")
+  handoffToManager   Boolean @default(true) @map("handoff_to_manager")
+  useKnowledgeBase   Boolean @default(true) @map("use_knowledge_base")
+  useHistory         Boolean @default(true) @map("use_history")
+  useCrm             Boolean @default(true) @map("use_crm")
+  useForecast        Boolean @default(true) @map("use_forecast")
+  useDecisionEngine  Boolean @default(true) @map("use_decision_engine")
+  useMemory          Boolean @default(true)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, accountId])
+  @@map("avito_sales_agent_config_read_model")
+}
+
+model AvitoFollowUpReadModel {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  leadId       String?   @map("lead_id") @db.Uuid
+  customerId   String?   @map("customer_id") @db.Uuid
+  dealId       String?   @map("deal_id") @db.Uuid
+  name         String
+  trigger      String
+  delayDays    Int       @map("delay_days")
+  dueAt        DateTime  @map("due_at") @db.Timestamptz(6)
+  status       String    @default("pending")
+  enabled      Boolean   @default(true)
+  createdAt    DateTime  @map("created_at") @db.Timestamptz(6)
+  executedAt   DateTime? @map("executed_at") @db.Timestamptz(6)
+
+  @@index([tenantId, dueAt, status])
+  @@map("avito_follow_up_read_model")
+}
+
+model AvitoDealAnalysisReadModel {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  dealId       String   @map("deal_id") @db.Uuid
+  outcome      String   @default("open")
+  whyBought    String?  @map("why_bought")
+  whyLost      String?  @map("why_lost")
+  improvements Json     @default("[]")
+  aiSummary    String   @default("") @map("ai_summary")
+  analyzedAt   DateTime @map("analyzed_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, dealId])
+  @@map("avito_deal_analysis_read_model")
+}
+
+model AvitoSalesDocumentReadModel {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  kind       String
+  title      String
+  dealId     String?  @map("deal_id") @db.Uuid
+  customerId String?  @map("customer_id") @db.Uuid
+  storageKey String?  @map("storage_key")
+  publicUrl  String?  @map("public_url")
+  createdAt  DateTime @map("created_at") @db.Timestamptz(6)
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@map("avito_sales_document_read_model")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Avito AI Automation Platform — Phase A6 read models
+// ─────────────────────────────────────────────────────────────
+
+model AvitoAiWatcherReadModel {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId              String    @map("tenant_id") @db.Uuid
+  name                  String
+  metric                String
+  entityType            String    @default("organization") @map("entity_type")
+  entityId              String?   @map("entity_id") @db.Uuid
+  enabled               Boolean   @default(true)
+  compareDays           Int       @default(7) @map("compare_days")
+  anomalyThresholdPct   Float     @default(30) @map("anomaly_threshold_pct")
+  lastRunAt             DateTime? @map("last_run_at") @db.Timestamptz(6)
+  lastStatus            String?   @map("last_status")
+  lastValue             Float?    @map("last_value")
+  lastForecast          String?   @map("last_forecast")
+  recommendation        String?
+  createdAt             DateTime  @map("created_at") @db.Timestamptz(6)
+
+  @@index([tenantId, enabled])
+  @@map("avito_ai_watcher_read_model")
+}
+
+model AvitoAutomationRuleReadModel {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId             String    @map("tenant_id") @db.Uuid
+  name                 String
+  enabled              Boolean   @default(true)
+  metric               String
+  operator             String
+  threshold            Float
+  actionType           String    @map("action_type")
+  actionPayload        Json      @default("{}") @map("action_payload")
+  requiresConfirmation Boolean   @default(true) @map("requires_confirmation")
+  lastTriggeredAt      DateTime? @map("last_triggered_at") @db.Timestamptz(6)
+  triggerCount         Int       @default(0) @map("trigger_count")
+  createdAt            DateTime  @map("created_at") @db.Timestamptz(6)
+
+  @@index([tenantId, enabled])
+  @@map("avito_automation_rule_read_model")
+}
+
+model AvitoObservatoryItemReadModel {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  kind       String
+  severity   String   @default("info")
+  title      String
+  body       String
+  entityType String?  @map("entity_type")
+  entityId   String?  @map("entity_id") @db.Uuid
+  source     String   @default("watcher")
+  dedupeKey  String   @map("dedupe_key")
+  dismissed  Boolean  @default(false)
+  createdAt  DateTime @map("created_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, dedupeKey])
+  @@index([tenantId, kind, dismissed, createdAt(sort: Desc)])
+  @@map("avito_observatory_item_read_model")
+}
+
+model AvitoPriceRecommendationReadModel {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  adId           String   @map("ad_id") @db.Uuid
+  adTitle        String   @map("ad_title")
+  currentPrice   Float    @map("current_price")
+  suggestedPrice Float    @map("suggested_price")
+  direction      String
+  confidence     Float
+  reason         String
+  status         String   @default("pending")
+  createdAt      DateTime @map("created_at") @db.Timestamptz(6)
+
+  @@index([tenantId, status, createdAt(sort: Desc)])
+  @@map("avito_price_recommendation_read_model")
+}
+
+model AvitoContentRecommendationReadModel {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  adId       String   @map("ad_id") @db.Uuid
+  adTitle    String   @map("ad_title")
+  field      String
+  suggestion String
+  score      Float
+  status     String   @default("pending")
+  createdAt  DateTime @map("created_at") @db.Timestamptz(6)
+
+  @@index([tenantId, adId, status])
+  @@map("avito_content_recommendation_read_model")
+}
+
+model AvitoNotificationPolicyReadModel {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String
+  enabled   Boolean  @default(true)
+  channels  String[] @default([])
+  filters   String[] @default([])
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+
+  @@index([tenantId, enabled])
+  @@map("avito_notification_policy_read_model")
+}
+
+model AvitoAiReportReadModel {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  summary      String
+  changes      Json     @default("[]")
+  improvements Json     @default("[]")
+  todayActions Json     @default("[]") @map("today_actions")
+  fullText     String   @default("") @map("full_text")
+  generatedAt  DateTime @map("generated_at") @db.Timestamptz(6)
+
+  @@index([tenantId, generatedAt(sort: Desc)])
+  @@map("avito_ai_report_read_model")
+}
+
+model AvitoExecutiveAiSnapshotReadModel {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  summary       String
+  highlights    Json     @default("[]")
+  risks         Json     @default("[]")
+  opportunities Json     @default("[]")
+  plainLanguage String   @map("plain_language")
+  generatedAt   DateTime @map("generated_at") @db.Timestamptz(6)
+
+  @@index([tenantId, generatedAt(sort: Desc)])
+  @@map("avito_executive_ai_snapshot_read_model")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Avito Production Readiness — Phase A7 read models
+// ─────────────────────────────────────────────────────────────
+
+model AvitoProductionSettingsReadModel {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @unique @map("tenant_id") @db.Uuid
+  runtimeMode  String   @default("sandbox") @map("runtime_mode")
+  wizardStep   Int      @default(1) @map("wizard_step")
+  wizardDone   Boolean  @default(false) @map("wizard_done")
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("avito_production_settings_read_model")
+}
+
+model AvitoBackupSnapshotReadModel {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  kind       String   @default("full")
+  sections   String[] @default([])
+  payload    Json     @default("{}")
+  createdAt  DateTime @map("created_at") @db.Timestamptz(6)
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@map("avito_backup_snapshot_read_model")
+}
+
+model AvitoProductionEventReadModel {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  kind       String
+  payload    Json     @default("{}")
+  createdAt  DateTime @map("created_at") @db.Timestamptz(6)
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@map("avito_production_event_read_model")
 }

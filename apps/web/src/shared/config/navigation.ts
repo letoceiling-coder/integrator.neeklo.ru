@@ -66,6 +66,11 @@ export const NAVIGATION: NavGroup[] = [
     label: 'Avito',
     items: [
       { label: 'Account Center', path: '/avito/accounts', icon: Link2 },
+      { label: 'Production Readiness', path: '/avito/production', icon: Gauge },
+      { label: 'AI Automation', path: '/avito/automation', icon: Bot },
+      { label: 'Sales Center', path: '/avito/sales', icon: Users },
+      { label: 'Operations Center', path: '/avito/operations', icon: Sparkles },
+      { label: 'Live Platform', path: '/avito/live', icon: Activity },
       { label: 'Analytics Center', path: '/avito/analytics', icon: Activity },
       { label: 'Listing Generator', path: '/avito/listing', icon: Sparkles },
       { label: 'Regional Publishing', path: '/avito/regional', icon: Map },
@@ -112,6 +117,8 @@ export const NAVIGATION: NavGroup[] = [
       { label: 'Файлы', path: '/files', icon: Folder },
       { label: 'API', path: '/developer', icon: Plug },
       { label: 'Настройки', path: '/settings', icon: Settings },
+      { label: 'OAuth Debug', path: '/settings/oauth', icon: Plug },
+      { label: 'Connection Report', path: '/settings/connection-report', icon: Link2 },
     ],
   },
 ];

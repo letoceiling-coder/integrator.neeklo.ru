@@ -14,7 +14,6 @@ import {
   type MarketplaceProviderManifest,
   type StatsPoint,
 } from '@neeklo/marketplace-sdk';
-import { DomainError } from '@neeklo/kernel';
 import { PluginKind, type NeekloPlugin, type PluginContext, type PluginHealth } from '@neeklo/plugin-runtime';
 import type { Env } from '../../config/env.schema';
 import { AvitoClient } from '../../platform/adapters/avito/avito.client';
@@ -28,7 +27,7 @@ const CAPABILITIES: CapabilityDescriptor[] = [
   { name: 'health', version: '1.0', supported: true },
   { name: 'publication', version: '1.0', supported: false },
   { name: 'promotion', version: '1.0', supported: false },
-  { name: 'sync', version: '1.0', supported: false },
+  { name: 'sync', version: '1.0', supported: true },
 ];
 
 /** Avito SDK provider — implements marketplace capabilities without core knowing "avito". */
@@ -58,23 +57,24 @@ export class AvitoMarketplaceProvider extends BaseMarketplaceProvider {
 class AvitoIdentity implements MarketplaceIdentity {
   constructor(private readonly client: AvitoClient) {}
 
-  async authorize(_ctx: MarketplaceContext, credentials: { clientId: string; clientSecret: string }) {
+  async authorize(ctx: MarketplaceContext, credentials: { clientId: string; clientSecret: string }) {
     void credentials;
-    const token = await this.client.getAccessToken();
+    const token = await this.client.getAccessToken(ctx.organizationId, ctx.accountId);
     return { accessToken: token, tokenType: 'Bearer', expiresAt: new Date(Date.now() + 3600_000).toISOString() };
   }
 
-  async refresh() {
-    throw new DomainError('not_supported', 'Avito uses client_credentials; refresh via authorize');
+  async refresh(ctx: MarketplaceContext) {
+    const token = await this.client.getAccessToken(ctx.organizationId, ctx.accountId);
+    return { accessToken: token, tokenType: 'Bearer', expiresAt: new Date(Date.now() + 3600_000).toISOString() };
   }
 
   async revoke() {
-    /* stateless client credentials */
+    /* tokens revoked via OAuth disconnect */
   }
 
-  async validate(_ctx: MarketplaceContext) {
+  async validate(ctx: MarketplaceContext) {
     try {
-      await this.client.getAccessToken();
+      await this.client.getAccessToken(ctx.organizationId, ctx.accountId);
       return { valid: true, expiresAt: new Date(Date.now() + 3600_000).toISOString() };
     } catch {
       return { valid: false };
@@ -85,8 +85,13 @@ class AvitoIdentity implements MarketplaceIdentity {
 class AvitoAccount {
   constructor(private readonly client: AvitoClient) {}
 
-  async getInfo(_ctx: MarketplaceContext) {
-    const self = await this.client.request<{ id: number; name?: string }>('GET', '/core/v1/accounts/self');
+  async getInfo(ctx: MarketplaceContext) {
+    const self = await this.client.request<{ id: number; name?: string }>(
+      ctx.organizationId,
+      ctx.accountId,
+      'GET',
+      '/core/v1/accounts/self',
+    );
     return {
       externalAccountId: String(self.id),
       displayName: self.name ?? `Avito #${self.id}`,
@@ -94,7 +99,7 @@ class AvitoAccount {
     };
   }
 
-  async getLimits() {
+  async getLimits(_ctx: MarketplaceContext) {
     return { dailyMessages: 10_000, dailyPublications: 0 };
   }
 }
@@ -102,19 +107,28 @@ class AvitoAccount {
 class AvitoMessaging implements MarketplaceMessaging {
   constructor(private readonly client: AvitoClient) {}
 
-  private async selfId() {
-    const self = await this.client.request<{ id: number }>('GET', '/core/v1/accounts/self');
+  private async selfId(ctx: MarketplaceContext) {
+    const self = await this.client.request<{ id: number }>(
+      ctx.organizationId,
+      ctx.accountId,
+      'GET',
+      '/core/v1/accounts/self',
+    );
     return self.id;
   }
 
-  async send(_ctx: MarketplaceContext, message: { conversationId: string; text: string }) {
-    const userId = await this.selfId();
-    await this.client.request('POST', `/messenger/v1/accounts/${userId}/chats/${message.conversationId}/messages`, {
-      body: { message: { text: message.text }, type: 'text' },
-    });
+  async send(ctx: MarketplaceContext, message: { conversationId: string; text: string }) {
+    const userId = await this.selfId(ctx);
+    await this.client.request(
+      ctx.organizationId,
+      ctx.accountId,
+      'POST',
+      `/messenger/v1/accounts/${userId}/chats/${message.conversationId}/messages`,
+      { body: { message: { text: message.text }, type: 'text' } },
+    );
   }
 
-  async listConversations() {
+  async listConversations(_ctx: MarketplaceContext) {
     return { items: [], nextCursor: null };
   }
 }
@@ -122,11 +136,16 @@ class AvitoMessaging implements MarketplaceMessaging {
 class AvitoStatistics implements MarketplaceStatistics {
   constructor(private readonly client: AvitoClient) {}
 
-  async fetchAdStats(_ctx: MarketplaceContext, externalAdId: string, range: { from: string; to: string }): Promise<StatsPoint[]> {
-    const self = await this.client.request<{ id: number }>('GET', '/core/v1/accounts/self');
+  async fetchAdStats(ctx: MarketplaceContext, externalAdId: string, range: { from: string; to: string }): Promise<StatsPoint[]> {
+    const self = await this.client.request<{ id: number }>(
+      ctx.organizationId,
+      ctx.accountId,
+      'GET',
+      '/core/v1/accounts/self',
+    );
     const res = await this.client.request<{
       result: { items: { itemId: number; stats: { date: string; uniqViews: number; uniqContacts: number; uniqFavorites: number }[] }[] };
-    }>('POST', `/stats/v1/accounts/${self.id}/items`, {
+    }>(ctx.organizationId, ctx.accountId, 'POST', `/stats/v1/accounts/${self.id}/items`, {
       body: {
         dateFrom: range.from.slice(0, 10),
         dateTo: range.to.slice(0, 10),
@@ -144,7 +163,7 @@ class AvitoStatistics implements MarketplaceStatistics {
     }));
   }
 
-  async fetchAccountStats() {
+  async fetchAccountStats(_ctx: MarketplaceContext) {
     return { views: 0, contacts: 0 };
   }
 }
@@ -173,10 +192,10 @@ class AvitoWebhooks implements MarketplaceWebhooks {
 class AvitoHealth implements MarketplaceHealth {
   constructor(private readonly client: AvitoClient) {}
 
-  async check(_ctx: MarketplaceContext): Promise<HealthStatus> {
+  async check(ctx: MarketplaceContext): Promise<HealthStatus> {
     const started = Date.now();
     try {
-      await this.client.getAccessToken();
+      await this.client.getAccessToken(ctx.organizationId, ctx.accountId);
       return {
         status: 'healthy',
         latencyMs: Date.now() - started,
@@ -213,12 +232,7 @@ export class AvitoMarketplacePlugin implements NeekloPlugin {
   ) {}
 
   async validate(): Promise<void> {
-    const id = this.config.get('AVITO_CLIENT_ID', { infer: true });
-    const secret = this.config.get('AVITO_CLIENT_SECRET', { infer: true });
-    if (!id || !secret) {
-      // Degraded mode — UI and local drafts work; live Avito API calls require credentials.
-      return;
-    }
+    /* Credentials live in OAuth Credential Vault per account — no global env check. */
   }
 
   async onInstall(ctx: PluginContext): Promise<void> {
@@ -242,16 +256,11 @@ export class AvitoMarketplacePlugin implements NeekloPlugin {
   }
 
   async healthCheck(): Promise<PluginHealth> {
-    try {
-      await this.client.getAccessToken();
-      return { status: 'healthy', checkedAt: new Date().toISOString() };
-    } catch (e) {
-      return {
-        status: 'unhealthy',
-        message: e instanceof Error ? e.message : String(e),
-        checkedAt: new Date().toISOString(),
-      };
-    }
+    return {
+      status: 'healthy',
+      message: 'OAuth tokens resolved per account via Credential Vault',
+      checkedAt: new Date().toISOString(),
+    };
   }
 
   createProvider(): AvitoMarketplaceProvider {
