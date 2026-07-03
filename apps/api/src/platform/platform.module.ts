@@ -18,6 +18,6 @@ import { EventBusService } from './event-bus/event-bus.service';
     { provide: EVENT_STORE, useExisting: EventStoreService },
     { provide: EVENT_BUS, useExisting: EventBusService },
   ],
-  exports: [PrismaModule, RedisModule, EVENT_STORE, EVENT_BUS],
+  exports: [PrismaModule, RedisModule, EVENT_STORE, EVENT_BUS, EventStoreService, EventBusService],
 })
 export class PlatformModule {}
