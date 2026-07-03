@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MarketplaceCode } from '@neeklo/contracts';
-import { OAuthCredentialStatus } from '@neeklo/contracts/events';
+import { OAuthStatus } from './oauth.constants';
 import type { AppendContext } from '@neeklo/kernel';
 import type { Env } from '../../config/env.schema';
 import { CredentialVaultService } from './vault/credential-vault.service';
@@ -104,7 +104,7 @@ export class TokenManagerService implements OnModuleInit, OnModuleDestroy {
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       await this.vault.updateStatus(credentialId, {
-        status: OAuthCredentialStatus.REAUTH_REQUIRED,
+        status: OAuthStatus.REAUTH_REQUIRED,
         health: 'unhealthy',
         lastError: message,
       });
@@ -118,7 +118,7 @@ export class TokenManagerService implements OnModuleInit, OnModuleDestroy {
       );
 
       if (record.tokenExpiresAt && record.tokenExpiresAt.getTime() <= Date.now()) {
-        await this.vault.updateStatus(credentialId, { status: OAuthCredentialStatus.EXPIRED });
+        await this.vault.updateStatus(credentialId, { status: OAuthStatus.EXPIRED });
         await this.events.tokenExpired(
           record.tenantId,
           credentialId,
@@ -137,7 +137,7 @@ export class TokenManagerService implements OnModuleInit, OnModuleDestroy {
     if (!record) {
       throw new Error(`No OAuth credential for account ${accountId}`);
     }
-    if (record.status !== OAuthCredentialStatus.CONNECTED && record.status !== OAuthCredentialStatus.PENDING) {
+    if (record.status !== OAuthStatus.CONNECTED && record.status !== OAuthStatus.PENDING) {
       throw new Error(`OAuth credential status: ${record.status}`);
     }
 

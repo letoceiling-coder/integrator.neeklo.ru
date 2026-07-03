@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { MarketplaceCode } from '@neeklo/contracts';
-import { OAuthCredentialStatus } from '@neeklo/contracts/events';
+import type { OAuthCredentialStatus } from '@neeklo/contracts/events';
+import { OAuthStatus } from '../oauth.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CredentialCipherService } from '../encryption/credential-cipher.service';
 import type {
@@ -41,7 +42,7 @@ export class CredentialVaultService {
         tokenExpiresAt: input.tokenExpiresAt ?? null,
         refreshExpiresAt: input.refreshExpiresAt ?? null,
         externalAccountId: input.externalAccountId ?? null,
-        status: input.status ?? OAuthCredentialStatus.PENDING,
+        status: input.status ?? OAuthStatus.PENDING,
         health: 'unknown',
         keyVersion,
       },
@@ -87,7 +88,7 @@ export class CredentialVaultService {
   async listExpiringBefore(before: Date): Promise<OAuthCredentialRecord[]> {
     const rows = await this.prisma.oAuthCredentialVault.findMany({
       where: {
-        status: OAuthCredentialStatus.CONNECTED,
+        status: OAuthStatus.CONNECTED,
         tokenExpiresAt: { lte: before, not: null },
       },
     });
@@ -130,7 +131,7 @@ export class CredentialVaultService {
         refreshExpiresAt: update.refreshExpiresAt ?? undefined,
         externalAccountId: update.externalAccountId ?? undefined,
         scopes: update.scopes ?? undefined,
-        status: OAuthCredentialStatus.CONNECTED,
+        status: OAuthStatus.CONNECTED,
         lastRefreshAt: new Date(),
         lastSuccessAt: new Date(),
         lastError: null,
