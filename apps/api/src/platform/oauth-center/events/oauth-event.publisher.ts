@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
-import { OAuthEventType, type EventType, type MarketplaceCode } from '@neeklo/contracts';
+import { OAuthEventType } from '@neeklo/contracts/events';
+import type { EventType, MarketplaceCode } from '@neeklo/contracts';
 import type { AppendContext } from '@neeklo/kernel';
 import { EventStoreService } from '../../event-store/event-store.service';
 import { EventBusService } from '../../event-bus/event-bus.service';

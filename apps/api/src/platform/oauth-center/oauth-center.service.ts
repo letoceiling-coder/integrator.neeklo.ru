@@ -4,7 +4,6 @@ import { v4 as uuid } from 'uuid';
 import type { AppendContext } from '@neeklo/kernel';
 import {
   MarketplaceCode,
-  OAuthCredentialStatus,
   OAUTH_CALLBACK_PATH,
   type AvitoConnectDto,
   type CurrentUser,
@@ -12,6 +11,7 @@ import {
   type OAuthCallbackResult,
   type OAuthConnectResponse,
 } from '@neeklo/contracts';
+import { OAuthCredentialStatus } from '@neeklo/contracts/events';
 import type { Env } from '../../config/env.schema';
 import { PrismaService } from '../prisma/prisma.service';
 import { ObservabilityService } from '../marketplace-core/observability/observability.service';

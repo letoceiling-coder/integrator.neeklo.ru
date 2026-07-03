@@ -2,7 +2,6 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   MarketplaceCode,
-  OAuthCredentialStatus,
   OAUTH_CALLBACK_PATH,
   OAUTH_CALLBACK_URI_PRODUCTION,
   type OAuthCheckStatus,
@@ -15,6 +14,7 @@ import {
   type OAuthValidationCheck,
   type OAuthValidationSuiteResult,
 } from '@neeklo/contracts';
+import { OAuthCredentialStatus } from '@neeklo/contracts/events';
 import type { Env } from '../../config/env.schema';
 import { PrismaService } from '../prisma/prisma.service';
 import { CredentialVaultService } from './vault/credential-vault.service';

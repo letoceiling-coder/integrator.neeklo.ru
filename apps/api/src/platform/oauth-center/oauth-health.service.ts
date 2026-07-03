@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { OAuthCredentialStatus } from '@neeklo/contracts';
+import { OAuthCredentialStatus } from '@neeklo/contracts/events';
 import type { Env } from '../../config/env.schema';
 import { CredentialVaultService } from './vault/credential-vault.service';
 import { OAuthProviderRegistry } from './providers/oauth-provider.registry';

@@ -2,10 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
 import {
   MarketplaceCode,
-  OAuthCredentialStatus,
   type OAuthProvisionResultDto,
   type OAuthSyncWizardStepDto,
 } from '@neeklo/contracts';
+import { OAuthCredentialStatus } from '@neeklo/contracts/events';
 import type { AppendContext } from '@neeklo/kernel';
 import { PrismaService } from '../prisma/prisma.service';
 import { AvitoClient } from '../adapters/avito/avito.client';

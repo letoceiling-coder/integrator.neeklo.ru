@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { OAuthCredentialStatus, MarketplaceCode } from '@neeklo/contracts';
+import { MarketplaceCode } from '@neeklo/contracts';
+import { OAuthCredentialStatus } from '@neeklo/contracts/events';
 import type { AppendContext } from '@neeklo/kernel';
 import type { Env } from '../../config/env.schema';
 import { CredentialVaultService } from './vault/credential-vault.service';

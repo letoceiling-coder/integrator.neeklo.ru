@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { MarketplaceCode, OAuthCredentialStatus } from '@neeklo/contracts';
+import { MarketplaceCode } from '@neeklo/contracts';
+import { OAuthCredentialStatus } from '@neeklo/contracts/events';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CredentialCipherService } from '../encryption/credential-cipher.service';
 import type {

@@ -1,13 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   MarketplaceCode,
-  OAuthCredentialStatus,
   type OAuthCheckStatus,
   type OAuthConnectionReportDto,
   type OAuthConnectionSectionDto,
   type OAuthIntegrationDashboardDto,
   type OAuthSyncWizardStepDto,
 } from '@neeklo/contracts';
+import { OAuthCredentialStatus } from '@neeklo/contracts/events';
 import { PrismaService } from '../prisma/prisma.service';
 import { AvitoClient } from '../adapters/avito/avito.client';
 import { CredentialVaultService } from './vault/credential-vault.service';

@@ -1,5 +1,5 @@
 import type { MarketplaceCode } from '@neeklo/contracts';
-import type { OAuthCredentialStatus } from '@neeklo/contracts';
+import type { OAuthCredentialStatus } from '@neeklo/contracts/events';
 
 export interface DecryptedOAuthCredentials {
   clientId: string;
