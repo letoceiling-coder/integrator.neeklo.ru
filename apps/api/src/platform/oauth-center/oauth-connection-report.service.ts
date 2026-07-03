@@ -12,8 +12,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AvitoClient } from '../adapters/avito/avito.client';
 import { CredentialVaultService } from './vault/credential-vault.service';
 import { OAuthValidationService } from './oauth-validation.service';
-import { AvitoLivePlatformService } from '../avito-live/avito-live-platform.service';
-import { AvitoLiveRequestLogService } from '../avito-live/logging/avito-live-request-log.service';
 import { friendlyAvitoError } from './avito-api-errors';
 
 @Injectable()
@@ -23,8 +21,6 @@ export class OAuthConnectionReportService {
     private readonly vault: CredentialVaultService,
     private readonly validation: OAuthValidationService,
     private readonly avito: AvitoClient,
-    private readonly live: AvitoLivePlatformService,
-    private readonly requestLog: AvitoLiveRequestLogService,
   ) {}
 
   async buildReport(tenantId: string, accountId: string): Promise<OAuthConnectionReportDto> {
@@ -35,13 +31,13 @@ export class OAuthConnectionReportService {
     const account = await this.prisma.accountReadModel.findFirst({ where: { id: accountId, organizationId: tenantId } });
     const syncSteps = this.readSyncSteps(detail?.syncHistory);
 
-    const [validation, checklist, health, usage, liveDashboard, overview] = await Promise.all([
+    const [validation, checklist, health, usage, workers, overview] = await Promise.all([
       this.validation.runSuite(tenantId, accountId),
       this.validation.getProductionChecklist(tenantId, accountId),
       this.validation.getHealthDashboard(tenantId, accountId),
-      this.requestLog.usageStats(tenantId, 3600_000),
-      this.live.getDashboard(tenantId, accountId).catch(() => null),
-      this.live.getAccountOverview(tenantId, accountId).catch(() => null),
+      this.usageStats(tenantId, 3600_000),
+      this.prisma.avitoLiveSyncWorkerReadModel.findMany({ where: { tenantId, accountId }, orderBy: { worker: 'asc' } }),
+      this.loadAccountOverview(tenantId, accountId),
     ]);
 
     let selfId: number | null = null;
@@ -94,9 +90,14 @@ export class OAuthConnectionReportService {
       checklist,
     };
 
-    const supportedApis = liveDashboard?.workers
-      .filter((w) => w.status === 'completed')
-      .map((w) => w.officialApi) ?? [];
+    const supportedApis = workers
+      .filter((w) => w.lastStatus === 'completed')
+      .map((w) => w.officialApi);
+
+    const lastSync = workers.reduce<Date | null>((max, w) => {
+      if (!w.lastSyncAt) return max;
+      return !max || w.lastSyncAt > max ? w.lastSyncAt : max;
+    }, null);
 
     const audit = this.buildAudit({
       validation,
@@ -137,13 +138,12 @@ export class OAuthConnectionReportService {
         steps: syncSteps,
         adsCount,
         messagesCount,
-        lastSyncAt: detail?.lastSyncAt?.toISOString() ?? liveDashboard?.lastFullSyncAt ?? null,
-        liveWorkers:
-          liveDashboard?.workers.map((w) => ({
-            worker: w.worker,
-            status: w.status,
-            lastError: w.lastError,
-          })) ?? [],
+        lastSyncAt: detail?.lastSyncAt?.toISOString() ?? lastSync?.toISOString() ?? null,
+        liveWorkers: workers.map((w) => ({
+          worker: w.worker,
+          status: w.lastStatus,
+          lastError: w.lastError,
+        })),
       },
       messenger: messengerSection,
       feed: feedSection,
@@ -418,6 +418,28 @@ export class OAuthConnectionReportService {
     if (!Array.isArray(syncHistory) || !syncHistory.length) return [];
     const latest = syncHistory[0] as { steps?: OAuthSyncWizardStepDto[] };
     return latest.steps ?? [];
+  }
+
+  private async loadAccountOverview(tenantId: string, accountId: string) {
+    const account = await this.prisma.accountReadModel.findFirst({ where: { id: accountId, organizationId: tenantId } });
+    const profile = await this.prisma.avitoLiveSnapshotReadModel.findUnique({
+      where: { tenantId_accountId_domain: { tenantId, accountId, domain: 'profile' } },
+    });
+    const p = (profile?.payload ?? {}) as Record<string, unknown>;
+    return {
+      externalAccountId: account?.externalAccountId ?? null,
+      companyName: typeof p.name === 'string' ? p.name : null,
+      accountType: typeof p.type === 'string' ? p.type : null,
+    };
+  }
+
+  private async usageStats(tenantId: string, sinceMs: number) {
+    const since = new Date(Date.now() - sinceMs);
+    const rows = await this.prisma.avitoLiveRequestLogReadModel.findMany({
+      where: { tenantId, occurredAt: { gte: since } },
+    });
+    const lastRate = rows.find((r) => r.rateLimitRemaining != null)?.rateLimitRemaining ?? null;
+    return { requestsLastHour: rows.length, rateLimitRemaining: lastRate };
   }
 
   private async countAds(tenantId: string, _accountId: string): Promise<number> {

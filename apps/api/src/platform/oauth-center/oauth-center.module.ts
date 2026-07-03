@@ -2,7 +2,6 @@ import { Global, Module, forwardRef } from '@nestjs/common';
 import { AccountModule } from '../../modules/account/account.module';
 import { MarketplaceCoreModule } from '../marketplace-core/marketplace-core.module';
 import { AvitoPlatformModule } from '../avito/avito-platform.module';
-import { AvitoLiveModule } from '../avito-live/avito-live.module';
 import { CredentialCipherService } from './encryption/credential-cipher.service';
 import { AvitoOAuthProvider } from './providers/avito-oauth.provider';
 import { OAuthProviderRegistry } from './providers/oauth-provider.registry';
@@ -17,7 +16,7 @@ import { OAuthConnectionReportService } from './oauth-connection-report.service'
 
 @Global()
 @Module({
-  imports: [AccountModule, MarketplaceCoreModule, forwardRef(() => AvitoPlatformModule), AvitoLiveModule],
+  imports: [AccountModule, MarketplaceCoreModule, forwardRef(() => AvitoPlatformModule)],
   providers: [
     CredentialCipherService,
     AvitoOAuthProvider,
