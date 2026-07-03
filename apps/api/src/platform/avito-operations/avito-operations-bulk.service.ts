@@ -1,3 +1,4 @@
+import { Injectable } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
 import type { AvitoBulkOperationDto } from '@neeklo/contracts';
 import type { AppendContext } from '@neeklo/kernel';
